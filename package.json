@@ -1,12 +1,12 @@
 {
-  "name": "coreos-azure-weave",
+  "name": "coreos-azure",
   "version": "1.0.0",
-  "description": "Small utility to bring up a woven CoreOS cluster",
+  "description": "Small utility to bring up a flannel CoreOS cluster",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Ilya Dmitrichenko <errordeveloper@gmail.com>",
+  "author": "Gary Roberts <contact@tallstreet.com>",
   "license": "Apache 2.0",
   "dependencies": {
     "azure-cli": "^0.9.5",
