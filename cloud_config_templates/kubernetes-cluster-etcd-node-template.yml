@@ -15,5 +15,5 @@ coreos:
     advertise-client-urls: 'http://%H:2379,http://%H:4001'
     initial-cluster-state: 'new'
   update:
-    group: stable
-    reboot-strategy: off
+    group: alpha
+    reboot-strategy: best-effort

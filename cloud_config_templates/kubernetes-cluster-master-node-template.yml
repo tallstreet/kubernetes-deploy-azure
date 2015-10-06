@@ -1,0 +1,264 @@
+## This file is used as input to deployment script, which amends it as needed.
+## More specifically, we need to add environment files for as many nodes as we
+## are going to deploy.
+
+write_files:
+  - path: /opt/bin/curl-retry.sh
+    permissions: '0755'
+    owner: root
+    content: |
+      #!/bin/sh -x
+      until curl $@
+      do sleep 1
+      done
+      
+  - path: /etc/flannel/options.env
+    permissions: '0755'
+    owner: root
+    content: |
+      FLANNELD_IFACE=172.18.0.6
+      FLANNELD_ETCD_ENDPOINTS=http://etcd-00:4001,http://etcd-01:4001
+      
+  - path: /etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf
+    permissions: '0755'
+    owner: root
+    content: |
+      [Service]
+      ExecStartPre=/usr/bin/ln -sf /etc/flannel/options.env /run/flannel/options.env
+      
+  - path: /etc/systemd/system/docker.service.d/40-flannel.conf
+    permissions: '0755'
+    owner: root
+    content: |
+      [Unit]
+      Requires=flanneld.service
+      After=flanneld.service
+      
+  - path: /etc/kubernetes/manifests/kube-apiserver.yaml
+    permissions: '0755'
+    owner: root
+    content: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: kube-apiserver
+        namespace: kube-system
+      spec:
+        hostNetwork: true
+        containers:
+        - name: kube-apiserver
+          image: gcr.io/google_containers/hyperkube:v1.0.6
+          command:
+          - /hyperkube
+          - apiserver
+          - --bind-address=0.0.0.0
+          - --etcd_servers=http://etcd-00:4001,http://etcd-01:4001
+          - --allow-privileged=true
+          - --service-cluster-ip-range=10.3.0.0/24
+          - --secure_port=443
+          - --advertise-address=172.18.0.6
+          - --admission-control=NamespaceLifecycle,NamespaceExists,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota
+          - --tls-cert-file=/etc/kubernetes/ssl/apiserver.pem
+          - --tls-private-key-file=/etc/kubernetes/ssl/apiserver-key.pem
+          - --client-ca-file=/etc/kubernetes/ssl/ca.pem
+          - --service-account-key-file=/etc/kubernetes/ssl/apiserver-key.pem
+          ports:
+          - containerPort: 443
+            hostPort: 443
+            name: https
+          - containerPort: 8080
+            hostPort: 8080
+            name: local
+          volumeMounts:
+          - mountPath: /etc/kubernetes/ssl
+            name: ssl-certs-kubernetes
+            readOnly: true
+          - mountPath: /etc/ssl/certs
+            name: ssl-certs-host
+            readOnly: true
+        volumes:
+        - hostPath:
+            path: /etc/kubernetes/ssl
+          name: ssl-certs-kubernetes
+        - hostPath:
+            path: /usr/share/ca-certificates
+          name: ssl-certs-host
+      
+  - path: /etc/kubernetes/manifests/kube-proxy.yaml
+    permissions: '0755'
+    owner: root
+    content: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: kube-proxy
+        namespace: kube-system
+      spec:
+        hostNetwork: true
+        containers:
+        - name: kube-proxy
+          image: gcr.io/google_containers/hyperkube:v1.0.6
+          command:
+          - /hyperkube
+          - proxy
+          - --master=http://127.0.0.1:8080
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - mountPath: /etc/ssl/certs
+            name: ssl-certs-host
+            readOnly: true
+        volumes:
+        - hostPath:
+            path: /usr/share/ca-certificates
+          name: ssl-certs-host
+          
+  - path: /etc/kubernetes/manifests/kube-podmaster.yaml
+    permissions: '0755'
+    owner: root
+    content: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: kube-podmaster
+        namespace: kube-system
+      spec:
+        hostNetwork: true
+        containers:
+        - name: scheduler-elector
+          image: gcr.io/google_containers/podmaster:1.1
+          command:
+          - /podmaster
+          - --etcd-servers=http://etcd-00:4001,http://etcd-01:4001
+          - --key=scheduler
+          - --whoami=172.18.0.6
+          - --source-file=/src/manifests/kube-scheduler.yaml
+          - --dest-file=/dst/manifests/kube-scheduler.yaml
+          volumeMounts:
+          - mountPath: /src/manifests
+            name: manifest-src
+            readOnly: true
+          - mountPath: /dst/manifests
+            name: manifest-dst
+        - name: controller-manager-elector
+          image: gcr.io/google_containers/podmaster:1.1
+          command:
+          - /podmaster
+          - --etcd-servers=http://etcd-00:4001,http://etcd-01:4001
+          - --key=controller
+          - --whoami=172.18.0.6
+          - --source-file=/src/manifests/kube-controller-manager.yaml
+          - --dest-file=/dst/manifests/kube-controller-manager.yaml
+          terminationMessagePath: /dev/termination-log
+          volumeMounts:
+          - mountPath: /src/manifests
+            name: manifest-src
+            readOnly: true
+          - mountPath: /dst/manifests
+            name: manifest-dst
+        volumes:
+        - hostPath:
+            path: /srv/kubernetes/manifests
+          name: manifest-src
+        - hostPath:
+            path: /etc/kubernetes/manifests
+          name: manifest-dst
+          
+  - path: /etc/kubernetes/manifests/kube-controller-manager.yaml
+    permissions: '0755'
+    owner: root
+    content: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: kube-controller-manager
+        namespace: kube-system
+      spec:
+        containers:
+        - name: kube-controller-manager
+          image: gcr.io/google_containers/hyperkube:v1.0.6
+          command:
+          - /hyperkube
+          - controller-manager
+          - --master=http://127.0.0.1:8080
+          - --service-account-private-key-file=/etc/kubernetes/ssl/apiserver-key.pem
+          - --root-ca-file=/etc/kubernetes/ssl/ca.pem
+          livenessProbe:
+            httpGet:
+              host: 127.0.0.1
+              path: /healthz
+              port: 10252
+            initialDelaySeconds: 15
+            timeoutSeconds: 1
+          volumeMounts:
+          - mountPath: /etc/kubernetes/ssl
+            name: ssl-certs-kubernetes
+            readOnly: true
+          - mountPath: /etc/ssl/certs
+            name: ssl-certs-host
+            readOnly: true
+        hostNetwork: true
+        volumes:
+        - hostPath:
+            path: /etc/kubernetes/ssl
+          name: ssl-certs-kubernetes
+        - hostPath:
+            path: /usr/share/ca-certificates
+          name: ssl-certs-host
+          
+  - path: /srv/kubernetes/manifests/kube-scheduler.yaml
+    permissions: '0755'
+    owner: root
+    content: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: kube-scheduler
+        namespace: kube-system
+      spec:
+        hostNetwork: true
+        containers:
+        - name: kube-scheduler
+          image: gcr.io/google_containers/hyperkube:v1.0.6
+          command:
+          - /hyperkube
+          - scheduler
+          - --master=http://127.0.0.1:8080
+          livenessProbe:
+            httpGet:
+              host: 127.0.0.1
+              path: /healthz
+              port: 10251
+            initialDelaySeconds: 15
+            timeoutSeconds: 1
+            
+coreos:
+  update:
+    group: alpha
+    reboot-strategy: best-effort
+  units:
+    - name: systemd-networkd-wait-online.service
+      drop-ins:
+        - name: 50-check-github-is-reachable.conf
+          content: |
+            [Service]
+            ExecStart=/bin/sh -x -c \
+              'until curl --silent --fail https://status.github.com/api/status.json | grep -q \"good\"; do sleep 2; done'
+
+    - name: kubelet.service
+      enable: true
+      content: |
+        [Service]
+        ExecStart=/usr/bin/kubelet \
+          --api_servers=http://127.0.0.1:8080 \
+          --register-node=false \
+          --allow-privileged=true \
+          --config=/etc/kubernetes/manifests \
+          --hostname-override=172.18.0.6 \
+          --cluster_dns=10.3.0.10 \
+          --cluster_domain=cluster.local \
+          --cadvisor-port=0
+        Restart=always
+        RestartSec=10
+        [Install]
+        WantedBy=multi-user.target

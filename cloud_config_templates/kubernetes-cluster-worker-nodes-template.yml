@@ -1,0 +1,132 @@
+## This file is used as input to deployment script, which amends it as needed.
+## More specifically, we need to add environment files for as many nodes as we
+## are going to deploy.
+
+write_files:
+  - path: /opt/bin/curl-retry.sh
+    permissions: '0755'
+    owner: root
+    content: |
+      #!/bin/sh -x
+      until curl $@
+      do sleep 1
+      done
+      
+  - path: /etc/flannel/options.env
+    permissions: '0755'
+    owner: root
+    content: |
+      FLANNELD_IFACE=$(hostname)
+      FLANNELD_ETCD_ENDPOINTS=http://etcd-00:4001,http://etcd-01:4001
+      
+  - path: /etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf
+    permissions: '0755'
+    owner: root
+    content: |
+      [Service]
+      ExecStartPre=/usr/bin/ln -sf /etc/flannel/options.env /run/flannel/options.env
+      
+  - path: /etc/systemd/system/docker.service.d/40-flannel.conf
+    permissions: '0755'
+    owner: root
+    content: |
+      [Unit]
+      Requires=flanneld.service
+      After=flanneld.service
+      
+  - path: /etc/kubernetes/manifests/kube-proxy.yaml
+    permissions: '0755'
+    owner: root
+    content: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: kube-proxy
+        namespace: kube-system
+      spec:
+        hostNetwork: true
+        containers:
+        - name: kube-proxy
+          image: gcr.io/google_containers/hyperkube:v1.0.6
+          command:
+          - /hyperkube
+          - proxy
+          - --master=https://172.18.0.6
+          - --kubeconfig=/etc/kubernetes/worker-kubeconfig.yaml
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /etc/ssl/certs
+              name: "ssl-certs"
+            - mountPath: /etc/kubernetes/worker-kubeconfig.yaml
+              name: "kubeconfig"
+              readOnly: true
+            - mountPath: /etc/kubernetes/ssl
+              name: "etc-kube-ssl"
+              readOnly: true
+        volumes:
+          - name: "ssl-certs"
+            hostPath:
+              path: "/usr/share/ca-certificates"
+          - name: "kubeconfig"
+            hostPath:
+              path: "/etc/kubernetes/worker-kubeconfig.yaml"
+          - name: "etc-kube-ssl"
+            hostPath:
+              path: "/etc/kubernetes/ssl"
+
+  - path: /etc/kubernetes/worker-kubeconfig.yaml
+    permissions: '0755'
+    owner: root
+    content: |
+      apiVersion: v1
+      kind: Config
+      clusters:
+      - name: local
+        cluster:
+          certificate-authority: /etc/kubernetes/ssl/ca.pem
+      users:
+      - name: kubelet
+        user:
+          client-certificate: /etc/kubernetes/ssl/worker.pem
+          client-key: /etc/kubernetes/ssl/worker-key.pem
+      contexts:
+      - context:
+          cluster: local
+          user: kubelet
+        name: kubelet-context
+      current-context: kubelet-context       
+           
+coreos:
+  update:
+    group: alpha
+    reboot-strategy: best-effort
+  units:
+    - name: systemd-networkd-wait-online.service
+      drop-ins:
+        - name: 50-check-github-is-reachable.conf
+          content: |
+            [Service]
+            ExecStart=/bin/sh -x -c \
+              'until curl --silent --fail https://status.github.com/api/status.json | grep -q \"good\"; do sleep 2; done'
+
+    - name: kubelet.service
+      enable: true
+      content: |
+        [Service]
+        ExecStart=/usr/bin/kubelet \
+          --api_servers=https://172.18.0.6 \
+          --register-node=true \
+          --allow-privileged=true \
+          --config=/etc/kubernetes/manifests \
+          --hostname-override=$(hostname) \
+          --cluster_dns=10.3.0.10 \
+          --cluster_domain=cluster.local \
+          --kubeconfig=/etc/kubernetes/worker-kubeconfig.yaml \
+          --tls-cert-file=/etc/kubernetes/ssl/worker.pem \
+          --tls-private-key-file=/etc/kubernetes/ssl/worker-key.pem \
+          --cadvisor-port=0
+        Restart=always
+        RestartSec=10
+        [Install]
+        WantedBy=multi-user.target
