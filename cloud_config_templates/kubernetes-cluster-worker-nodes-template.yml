@@ -101,6 +101,8 @@ coreos:
   update:
     group: alpha
     reboot-strategy: best-effort
+  locksmith:
+    endpoint: "http://etcd-00.com:4001,http://etcd-01.com:4001"
   units:
     - name: systemd-networkd-wait-online.service
       drop-ins:
@@ -112,6 +114,7 @@ coreos:
 
     - name: kubelet.service
       enable: true
+      command: "start"
       content: |
         [Service]
         ExecStart=/usr/bin/kubelet \

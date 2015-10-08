@@ -69,13 +69,7 @@ You will need to setup the flannel network IP allocation by calling
 curl -X PUT -d "value={\"Network\":\"10.2.0.0/16\"}" "http://etcd-00:4001/v2/keys/coreos.com/network/config"
 ```
 
-Then startup the node
-
-```sh
-sudo systemctl start kubelet
-```
-
-> Note: config file name will be different, make sure to use the one you see.
+You will need to download [kubectl](https://coreos.com/kubernetes/docs/latest/configure-kubectl.html)
 
 Check there are 2 nodes in the cluster:
 

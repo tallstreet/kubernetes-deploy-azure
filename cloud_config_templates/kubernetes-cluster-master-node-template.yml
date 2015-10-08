@@ -233,11 +233,38 @@ write_files:
               port: 10251
             initialDelaySeconds: 15
             timeoutSeconds: 1
-            
+          
+  - path: /home/core/.kube/config
+    permissions: '0755'
+    owner: core
+    content: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority: /etc/kubernetes/ssl/ca.pem
+          server: https://kubemaster-00
+        name: kubernetes
+      contexts:
+      - context:
+          cluster: kubernetes
+          user: kubernetes-admin
+        name: kubernetes
+      current-context: kubernetes
+      kind: Config
+      preferences: {}
+      users:
+      - name: kubernetes-admin
+        user:
+          client-certificate: admin.pem
+          client-key: admin-key.pem
+              
+              
 coreos:
   update:
     group: alpha
     reboot-strategy: best-effort
+  locksmith:
+    endpoint: "http://etcd-00.com:4001,http://etcd-01.com:4001"
   units:
     - name: systemd-networkd-wait-online.service
       drop-ins:
@@ -249,6 +276,7 @@ coreos:
 
     - name: kubelet.service
       enable: true
+      command: "start"
       content: |
         [Service]
         ExecStart=/usr/bin/kubelet \
