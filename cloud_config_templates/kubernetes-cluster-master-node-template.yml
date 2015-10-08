@@ -84,7 +84,7 @@ write_files:
           name: ssl-certs-kubernetes
         - hostPath:
             path: /usr/share/ca-certificates
-          name: ssl-certs-host'
+          name: ssl-certs-host
       
   - path: /etc/kubernetes/manifests/kube-proxy.yaml
     permissions: '0755'
