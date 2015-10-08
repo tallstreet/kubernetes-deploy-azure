@@ -13,21 +13,21 @@ write_files:
       done
       
   - path: /etc/flannel/options.env
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       FLANNELD_IFACE=$private_ipv4
       FLANNELD_ETCD_ENDPOINTS=http://etcd-00:4001,http://etcd-01:4001
       
   - path: /etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       [Service]
       ExecStartPre=/usr/bin/ln -sf /etc/flannel/options.env /run/flannel/options.env
       
   - path: /etc/systemd/system/docker.service.d/40-flannel.conf
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       [Unit]
@@ -35,7 +35,7 @@ write_files:
       After=flanneld.service
       
   - path: /etc/kubernetes/manifests/kube-proxy.yaml
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       apiVersion: v1
@@ -76,7 +76,7 @@ write_files:
               path: "/etc/kubernetes/ssl"
 
   - path: /etc/kubernetes/worker-kubeconfig.yaml
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       apiVersion: v1

@@ -13,21 +13,21 @@ write_files:
       done
       
   - path: /etc/flannel/options.env
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       FLANNELD_IFACE=$private_ipv4
       FLANNELD_ETCD_ENDPOINTS=http://etcd-00:4001,http://etcd-01:4001
       
   - path: /etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       [Service]
       ExecStartPre=/usr/bin/ln -sf /etc/flannel/options.env /run/flannel/options.env
       
   - path: /etc/systemd/system/docker.service.d/40-flannel.conf
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       [Unit]
@@ -35,7 +35,7 @@ write_files:
       After=flanneld.service
       
   - path: /etc/kubernetes/manifests/kube-apiserver.yaml
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       apiVersion: v1
@@ -87,7 +87,7 @@ write_files:
           name: ssl-certs-host
       
   - path: /etc/kubernetes/manifests/kube-proxy.yaml
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       apiVersion: v1
@@ -116,7 +116,7 @@ write_files:
           name: ssl-certs-host
           
   - path: /etc/kubernetes/manifests/kube-podmaster.yaml
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       apiVersion: v1
@@ -167,7 +167,7 @@ write_files:
           name: manifest-dst
           
   - path: /etc/kubernetes/manifests/kube-controller-manager.yaml
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       apiVersion: v1
@@ -209,7 +209,7 @@ write_files:
           name: ssl-certs-host
           
   - path: /srv/kubernetes/manifests/kube-scheduler.yaml
-    permissions: '0755'
+    permissions: '0644'
     owner: root
     content: |
       apiVersion: v1
@@ -235,7 +235,7 @@ write_files:
             timeoutSeconds: 1
           
   - path: /home/core/.kube/config
-    permissions: '0755'
+    permissions: '0644'
     owner: core
     content: |
       apiVersion: v1
