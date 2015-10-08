@@ -16,7 +16,7 @@ write_files:
     permissions: '0755'
     owner: root
     content: |
-      FLANNELD_IFACE=$(hostname)
+      FLANNELD_IFACE=$private_ipv4
       FLANNELD_ETCD_ENDPOINTS=http://etcd-00:4001,http://etcd-01:4001
       
   - path: /etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf
@@ -51,7 +51,7 @@ write_files:
           command:
           - /hyperkube
           - proxy
-          - --master=https://172.18.0.6
+          - --master=https://kubemaster-00
           - --kubeconfig=/etc/kubernetes/worker-kubeconfig.yaml
           securityContext:
             privileged: true
@@ -115,11 +115,11 @@ coreos:
       content: |
         [Service]
         ExecStart=/usr/bin/kubelet \
-          --api_servers=https://172.18.0.6 \
+          --api_servers=https://kubemaster-00 \
           --register-node=true \
           --allow-privileged=true \
           --config=/etc/kubernetes/manifests \
-          --hostname-override=$(hostname) \
+          --hostname-override=$private_ipv4 \
           --cluster_dns=10.3.0.10 \
           --cluster_domain=cluster.local \
           --kubeconfig=/etc/kubernetes/worker-kubeconfig.yaml \

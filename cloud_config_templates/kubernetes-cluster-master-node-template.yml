@@ -16,7 +16,7 @@ write_files:
     permissions: '0755'
     owner: root
     content: |
-      FLANNELD_IFACE=172.18.0.6
+      FLANNELD_IFACE=$private_ipv4
       FLANNELD_ETCD_ENDPOINTS=http://etcd-00:4001,http://etcd-01:4001
       
   - path: /etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf
@@ -56,8 +56,10 @@ write_files:
           - --allow-privileged=true
           - --service-cluster-ip-range=10.3.0.0/24
           - --secure_port=443
-          - --advertise-address=172.18.0.6
-          - --admission-control=NamespaceLifecycle,NamespaceExists,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota
+          - --advertise-address=$private_ipv4
+          - --admission-control=NamespaceLifecycle,NamespaceExists,LimitRanger
+          - --admission-control=SecurityContextDeny,ServiceAccount
+          - --admission-control=ResourceQuota
           - --tls-cert-file=/etc/kubernetes/ssl/apiserver.pem
           - --tls-private-key-file=/etc/kubernetes/ssl/apiserver-key.pem
           - --client-ca-file=/etc/kubernetes/ssl/ca.pem
@@ -82,7 +84,7 @@ write_files:
           name: ssl-certs-kubernetes
         - hostPath:
             path: /usr/share/ca-certificates
-          name: ssl-certs-host
+          name: ssl-certs-host'
       
   - path: /etc/kubernetes/manifests/kube-proxy.yaml
     permissions: '0755'
@@ -131,7 +133,7 @@ write_files:
           - /podmaster
           - --etcd-servers=http://etcd-00:4001,http://etcd-01:4001
           - --key=scheduler
-          - --whoami=172.18.0.6
+          - --whoami=$private_ipv4
           - --source-file=/src/manifests/kube-scheduler.yaml
           - --dest-file=/dst/manifests/kube-scheduler.yaml
           volumeMounts:
@@ -146,7 +148,7 @@ write_files:
           - /podmaster
           - --etcd-servers=http://etcd-00:4001,http://etcd-01:4001
           - --key=controller
-          - --whoami=172.18.0.6
+          - --whoami=$private_ipv4
           - --source-file=/src/manifests/kube-controller-manager.yaml
           - --dest-file=/dst/manifests/kube-controller-manager.yaml
           terminationMessagePath: /dev/termination-log
@@ -254,7 +256,7 @@ coreos:
           --register-node=false \
           --allow-privileged=true \
           --config=/etc/kubernetes/manifests \
-          --hostname-override=172.18.0.6 \
+          --hostname-override=$private_ipv4 \
           --cluster_dns=10.3.0.10 \
           --cluster_domain=cluster.local \
           --cadvisor-port=0
