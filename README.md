@@ -1,36 +1,4 @@
-<!-- BEGIN MUNGE: UNVERSIONED_WARNING -->
-
-<!-- BEGIN STRIP_FOR_RELEASE -->
-
-<img src="http://kubernetes.io/img/warning.png" alt="WARNING"
-     width="25" height="25">
-<img src="http://kubernetes.io/img/warning.png" alt="WARNING"
-     width="25" height="25">
-<img src="http://kubernetes.io/img/warning.png" alt="WARNING"
-     width="25" height="25">
-<img src="http://kubernetes.io/img/warning.png" alt="WARNING"
-     width="25" height="25">
-<img src="http://kubernetes.io/img/warning.png" alt="WARNING"
-     width="25" height="25">
-
-<h2>PLEASE NOTE: This document applies to the HEAD of the source tree</h2>
-
-If you are using a released version of Kubernetes, you should
-refer to the docs that go with that version.
-
-<strong>
-The latest 1.0.x release of this document can be found
-[here](http://releases.k8s.io/release-1.0/docs/getting-started-guides/coreos/azure/README.md).
-
-Documentation for other releases can be found at
-[releases.k8s.io](http://releases.k8s.io).
-</strong>
---
-
-<!-- END STRIP_FOR_RELEASE -->
-
-<!-- END MUNGE: UNVERSIONED_WARNING -->
-Kubernetes on Azure with CoreOS and [Weave](http://weave.works)
+Kubernetes on Azure with CoreOS
 ---------------------------------------------------------------
 
 **Table of Contents**
@@ -46,7 +14,7 @@ Kubernetes on Azure with CoreOS and [Weave](http://weave.works)
 
 ## Introduction
 
-In this guide I will demonstrate how to deploy a Kubernetes cluster to Azure cloud. You will be using CoreOS with Weave, which implements simple and secure networking, in a transparent, yet robust way. The purpose of this guide is to provide an out-of-the-box implementation that can ultimately be taken into production with little change. It will demonstrate how to provision a dedicated Kubernetes master and etcd nodes, and show how to scale the cluster with ease.
+In this guide I will demonstrate how to deploy a Kubernetes cluster to Azure cloud. You will be using CoreOS. The purpose of this guide is to provide an out-of-the-box implementation that can ultimately be taken into production with little change. It will demonstrate how to provision a dedicated Kubernetes master and etcd nodes, and show how to scale the cluster with ease.
 
 ### Prerequisites
 
@@ -57,8 +25,7 @@ In this guide I will demonstrate how to deploy a Kubernetes cluster to Azure clo
 To get started, you need to checkout the code:
 
 ```sh
-git clone https://github.com/kubernetes/kubernetes
-cd kubernetes/docs/getting-started-guides/coreos/azure/
+git clone https://github.com/tallstreet/kubernetes-azure
 ```
 
 You will need to have [Node.js installed](http://nodejs.org/download/) on you machine. If you have previously used Azure CLI, you should have it already.
@@ -76,7 +43,7 @@ Now, all you need to do is:
 ./create-kubernetes-cluster.js
 ```
 
-This script will provision a cluster suitable for production use, where there is a ring of 3 dedicated etcd nodes: 1 kubernetes master and 2 kubernetes nodes. The `kube-00` VM will be the master, your work loads are only to be deployed on the nodes, `kube-01` and `kube-02`. Initially, all VMs are single-core, to ensure a user of the free tier can reproduce it without paying extra. I will show how to add more bigger VMs later.
+This script will provision a cluster suitable for production use, where there is a ring of 2 dedicated etcd nodes: 1 kubernetes master and 2 kubernetes nodes. The `kubemaster-00` VM will be the master, your work loads are only to be deployed on the nodes, `kubeworker-00` and `kubeworker-01`. Initially, all VMs are single-core, to ensure a user of the free tier can reproduce it without paying extra. I will show how to add more bigger VMs later.
 
 ![VMs in Azure](initial_cluster.png)
 
@@ -86,14 +53,26 @@ Once the creation of Azure VMs has finished, you should see the following:
 ...
 azure_wrapper/info: Saved SSH config, you can use it like so: `ssh -F  ./output/kube_1c1496016083b4_ssh_conf <hostname>`
 azure_wrapper/info: The hosts in this deployment are:
- [ 'etcd-00', 'etcd-01', 'etcd-02', 'kube-00', 'kube-01', 'kube-02' ]
+ [ 'etcd-00', 'etcd-01', 'kubemaster-00', 'kubeworker-00', 'kubeworker-01' ]
 azure_wrapper/info: Saved state into `./output/kube_1c1496016083b4_deployment.yml`
 ```
 
 Let's login to the master node like so:
 
 ```sh
-ssh -F  ./output/kube_1c1496016083b4_ssh_conf kube-00
+ssh -F  ./output/kube_1c1496016083b4_ssh_conf kubemaster-01
+```
+
+You will need to setup the flannel network IP allocation by calling
+
+```sh
+curl -X PUT -d "value={\"Network\":\"10.2.0.0/16\"}" "http://etcd-00:4001/v2/keys/coreos.com/network/config"
+```
+
+Then startup the node
+
+```sh
+sudo systemctl start kubelet
 ```
 
 > Note: config file name will be different, make sure to use the one you see.
@@ -112,7 +91,7 @@ kube-02   kubernetes.io/hostname=kube-02   Ready
 Let's follow the Guestbook example now:
 
 ```sh
-kubectl create -f ~/guestbook-example
+kubectl create -f ~/nsq
 ```
 
 You need to wait for the pods to get deployed, run the following and wait for `STATUS` to change from `Pending` to `Running`.
