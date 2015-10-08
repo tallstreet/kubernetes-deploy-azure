@@ -25,7 +25,7 @@ In this guide I will demonstrate how to deploy a Kubernetes cluster to Azure clo
 To get started, you need to checkout the code:
 
 ```sh
-git clone https://github.com/tallstreet/kubernetes-azure
+git clone https://github.com/tallstreet/kubernetes-deploy-azure
 ```
 
 You will need to have [Node.js installed](http://nodejs.org/download/) on you machine. If you have previously used Azure CLI, you should have it already.
