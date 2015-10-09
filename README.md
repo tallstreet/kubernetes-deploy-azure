@@ -71,13 +71,31 @@ curl -X PUT -d "value={\"Network\":\"10.2.0.0/16\"}" "http://etcd-00:4001/v2/key
 
 You will need to download [kubectl](https://coreos.com/kubernetes/docs/latest/configure-kubectl.html)
 
+On kubemaster-00
+
+```sh
+ARCH=linux; wget https://storage.googleapis.com/kubernetes-release/release/v1.0.6/bin/${ARCH}/amd64/kubectl
+```
+
 Check there are 2 nodes in the cluster:
 
 ```console
-core@kube-00 ~ $ kubectl get nodes
-NAME      LABELS                           STATUS
-kube-01   kubernetes.io/hostname=kube-01   Ready
-kube-02   kubernetes.io/hostname=kube-02   Ready
+core@kube-00 ~ $ ./kubectl get nodes
+NAME          LABELS                               STATUS
+172.18.0.12   kubernetes.io/hostname=172.18.0.12   Ready
+172.18.0.13   kubernetes.io/hostname=172.18.0.13   Ready
+```
+
+You need to 
+```sh
+curl -XPOST -d'{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"kube-system"}}' "http://127.0.0.1:8080/api/v1/namespaces"
+```
+You can now deploy the DNS service: 
+
+```sh
+./kubectl create -f /srv/kubernetes/manifests/dns-service.yaml
+./kubectl create -f /srv/kubernetes/manifests/dns.yaml
+./kubectl get rc,pods,services --all-namespaces -o wide
 ```
 
 ## Deploying the workload
