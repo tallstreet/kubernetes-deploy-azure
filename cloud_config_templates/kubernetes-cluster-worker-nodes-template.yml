@@ -17,7 +17,7 @@ write_files:
     owner: root
     content: |
       FLANNELD_IFACE=$private_ipv4
-      FLANNELD_ETCD_ENDPOINTS=http://etcd-00:4001,http://etcd-01:4001
+      FLANNELD_ETCD_ENDPOINTS=http://etcd-00:4001,http://etcd-01:4001,http://etcd-02:4001
       
   - path: /etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf
     permissions: '0644'

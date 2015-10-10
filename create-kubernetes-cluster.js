@@ -6,7 +6,7 @@ var kube = require('./lib/deployment_logic/kubernetes.js');
 
 util.gen_keys(function() {
   
-  azure.create_config('kube', { 'etcd': 2, 'kubemaster': 1, 'kubeworker': 2});
+  azure.create_config('kube', { 'etcd': 3, 'kubemaster': 1, 'kubeworker': 2});
 
   azure.run_task_queue([
     azure.queue_default_network(),

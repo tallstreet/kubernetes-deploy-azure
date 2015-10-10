@@ -131,7 +131,7 @@ write_files:
           image: gcr.io/google_containers/podmaster:1.1
           command:
           - /podmaster
-          - --etcd-servers=http://etcd-00:4001,http://etcd-01:4001
+          - --etcd-servers=http://etcd-00:4001,http://etcd-01:4001,http://etcd-02:4001
           - --key=scheduler
           - --whoami=$private_ipv4
           - --source-file=/src/manifests/kube-scheduler.yaml
@@ -146,7 +146,7 @@ write_files:
           image: gcr.io/google_containers/podmaster:1.1
           command:
           - /podmaster
-          - --etcd-servers=http://etcd-00:4001,http://etcd-01:4001
+          - --etcd-servers=http://etcd-00:4001,http://etcd-01:4001,http://etcd-02:4001
           - --key=controller
           - --whoami=$private_ipv4
           - --source-file=/src/manifests/kube-controller-manager.yaml
@@ -289,7 +289,7 @@ write_files:
                   memory: 50Mi
               args:
               # command = "/skydns"
-              - -machines=http://etcd-00:4001,http://etcd-01:4001
+              - -machines=http://etcd-00:4001,http://etcd-01:4001,http://etcd-02:4001
               - -addr=0.0.0.0:53
               - -domain=cluster.local.
               ports:
@@ -387,14 +387,13 @@ write_files:
         user:
           client-certificate: admin.pem
           client-key: admin-key.pem
-              
-              
+                        
 coreos:
   update:
     group: alpha
     reboot-strategy: best-effort
   locksmith:
-    endpoint: "http://etcd-00.com:4001,http://etcd-01.com:4001"
+    endpoint: "http://etcd-00.com:4001,http://etcd-01.com:4001,http://etcd-02:4001"
   units:
     - name: systemd-networkd-wait-online.service
       drop-ins:
