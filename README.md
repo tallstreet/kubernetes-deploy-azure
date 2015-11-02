@@ -60,7 +60,7 @@ azure_wrapper/info: Saved state into `./output/kube_1c1496016083b4_deployment.ym
 Let's login to the master node like so:
 
 ```sh
-ssh -F  ./output/kube_1c1496016083b4_ssh_conf kubemaster-01
+ssh -F  ./output/kube_1c1496016083b4_ssh_conf kubemaster-00
 ```
 
 You will need to setup the flannel network IP allocation by calling

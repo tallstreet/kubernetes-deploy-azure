@@ -6,10 +6,23 @@ coreos:
     - name: etcd2.service
       enable: true
       command: start
+      after: systemd-networkd-wait-online.service
+    - name: systemd-networkd-wait-online.service
+      drop-ins:
+        - name: 50-check-github-is-reachable.conf
+          content: |
+            [Unit]
+            Before=etcd2.service
+            
+            [Service]
+            Type=oneshot
+            ExecStart=/bin/sh -x -c \
+              'until curl --silent --fail https://status.github.com/api/status.json | grep -q \"good\"; do sleep 2; done'
+
   etcd2:
     name: '$private_ipv4'
     # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=3
-    discovery: "https://discovery.etcd.io/<token>"
+    discovery: "https://discovery.etcd.io/de74c32b999667473d30f00fc220c412"
     # multi-region and multi-cloud deployments need to use $public_ipv4
     advertise-client-urls: "http://$private_ipv4:2379,http://$private_ipv4:4001"
     initial-advertise-peer-urls: "http://$private_ipv4:2380"
@@ -19,4 +32,4 @@ coreos:
     listen-peer-urls: "http://$private_ipv4:2380,http://$private_ipv4:7001"
   update:
     group: alpha
-    reboot-strategy: best-effort
+    reboot-strategy: off
